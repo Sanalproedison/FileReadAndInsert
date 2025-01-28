@@ -651,7 +651,7 @@ namespace FileReadAndInsert
         static void AsciiDat(string line, int Analogcount, int DigitalCount)
         {
             string connectionString = "Data Source=SANAL-PROEDISON\\SQLEXPRESS;Initial Catalog=Demo;User ID=sa;Password=mypassword;Encrypt=False;";
-
+            int k = 0;
             string[] values = line.Split(',');
             int[] intValues = Array.ConvertAll(values, s =>
             {
@@ -662,7 +662,7 @@ namespace FileReadAndInsert
                 return int.Parse(s);
             });
             string query4 = "INSERT INTO AnalogDat(ComtradeIndex,AnalogIndex,DatIndex,Time,Value,Result) VALUES (@ComtradeIndex,@AnalogIndex,@DatIndex,@Time,@Value,@Result)";
-
+            string query5 = "INSERT INTO DigitalDat(ComtradeIndex,DigitalIndex,DatIndex,Time,Value) VALUES (@ComtradeIndex,@DigitalIndex,@DatIndex,@Time,@Value)";
             using (SqlConnection con = new SqlConnection(connectionString))
             {
                 con.Open();
@@ -692,6 +692,25 @@ namespace FileReadAndInsert
 
                             cmdAnalogDat.ExecuteNonQuery();
                         }
+
+                       
+                    }
+                    for (int i = 2 + Comtrade1.AnalogSignalCount; i < intValues.Length; i++)
+                    {
+
+                        using (SqlCommand cmdDigitalDat = new SqlCommand(query5, con, transaction))
+                        {
+                            cmdDigitalDat.Parameters.AddWithValue("@ComtradeIndex", ComtradeIndex);
+                            cmdDigitalDat.Parameters.AddWithValue("@DigitalIndex", Digital[k].ChannelNumber);
+                            cmdDigitalDat.Parameters.AddWithValue("@DatIndex", intValues[0]);
+                            cmdDigitalDat.Parameters.AddWithValue("@Time", intValues[1]);
+                            cmdDigitalDat.Parameters.AddWithValue("@Value", intValues[i]);
+                            
+
+                            cmdDigitalDat.ExecuteNonQuery();
+
+                        }
+                        k++;
                     }
                     transaction.Commit();
                 }
@@ -702,7 +721,7 @@ namespace FileReadAndInsert
         static void BinaryDat(string[] hexChunk)
         {
             string connectionString = "Data Source=SANAL-PROEDISON\\SQLEXPRESS;Initial Catalog=Demo;User ID=sa;Password=mypassword;Encrypt=False;";
-            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,ChannelIndex,DatIndex,Time,Value) VALUES (@ComtradeIndex,@ChannelIndex,@DatIndex,@Time,@Value)";
+            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,AnalogIndex,DatIndex,Time,Value,Result) VALUES (@ComtradeIndex,@AnalogIndex,@DatIndex,@Time,@Value,@Result)";
 
 
 
@@ -743,7 +762,21 @@ namespace FileReadAndInsert
                 {
                     ascii = decimalValue;
                 }
-                valueArray.Add(ascii);
+
+                float result = 0;
+                if (Analog[k].DataPrimarySecondary.Equals("S"))
+                {
+
+                    result = ((ascii* Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset) * Analog[k].ChannelRatioPrimary;
+                }
+
+                else
+                {
+                    result = (ascii * Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset;
+                }
+
+
+
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
                     con.Open();
@@ -754,10 +787,11 @@ namespace FileReadAndInsert
                         using (SqlCommand cmdAnalogDat = new SqlCommand(query4, con, transaction))
                         {
                             cmdAnalogDat.Parameters.AddWithValue("@ComtradeIndex", ComtradeIndex);
-                            cmdAnalogDat.Parameters.AddWithValue("@ChannelIndex", Analog[k].ChannelIndexNumber);
+                            cmdAnalogDat.Parameters.AddWithValue("@AnalogIndex", Analog[k].ChannelIndexNumber);
                             cmdAnalogDat.Parameters.AddWithValue("@DatIndex", num);
                             cmdAnalogDat.Parameters.AddWithValue("@Time", num1);
                             cmdAnalogDat.Parameters.AddWithValue("@Value", ascii);
+                            cmdAnalogDat.Parameters.AddWithValue("@Result",result);
 
                             cmdAnalogDat.ExecuteNonQuery();
                         }
@@ -778,7 +812,7 @@ namespace FileReadAndInsert
         {
 
             string connectionString = "Data Source=SANAL-PROEDISON\\SQLEXPRESS;Initial Catalog=Demo;User ID=sa;Password=mypassword;Encrypt=False;";
-            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,ChannelIndex,DatIndex,Time,Value) VALUES (@ComtradeIndex,@ChannelIndex,@DatIndex,@Time,@Value)";
+            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,AnalogIndex,DatIndex,Time,Value,Result) VALUES (@ComtradeIndex,@AnalogIndex,@DatIndex,@Time,@Value,@Result)";
             int k=0;
             int ascii;
             string indexHex = hexChunk[3] + hexChunk[2] + hexChunk[1] + hexChunk[0];
@@ -814,6 +848,21 @@ namespace FileReadAndInsert
                 {
                     ascii = decimalValue;
                 }
+
+
+
+                float result = 0;
+                if (Analog[k].DataPrimarySecondary.Equals("S"))
+                {
+
+                    result = ((ascii * Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset) * Analog[k].ChannelRatioPrimary;
+                }
+
+                else
+                {
+                    result = (ascii * Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset;
+                }
+
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
                     con.Open();
@@ -824,10 +873,11 @@ namespace FileReadAndInsert
                         using (SqlCommand cmdAnalogDat = new SqlCommand(query4, con, transaction))
                         {
                             cmdAnalogDat.Parameters.AddWithValue("@ComtradeIndex", ComtradeIndex);
-                            cmdAnalogDat.Parameters.AddWithValue("@ChannelIndex", Analog[k].ChannelIndexNumber);
+                            cmdAnalogDat.Parameters.AddWithValue("@AnalogIndex", Analog[k].ChannelIndexNumber);
                             cmdAnalogDat.Parameters.AddWithValue("@DatIndex", num);
                             cmdAnalogDat.Parameters.AddWithValue("@Time", num1);
                             cmdAnalogDat.Parameters.AddWithValue("@Value", ascii);
+                            cmdAnalogDat.Parameters.AddWithValue("@Result", result);
 
                             cmdAnalogDat.ExecuteNonQuery();
                         }
@@ -847,14 +897,14 @@ namespace FileReadAndInsert
             }
         }
 
-
+        //Function for float32
 
 
         static void Float32(string[] hexChunk)
         {
 
             string connectionString = "Data Source=SANAL-PROEDISON\\SQLEXPRESS;Initial Catalog=Demo;User ID=sa;Password=mypassword;Encrypt=False;";
-            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,ChannelIndex,DatIndex,Time,Value) VALUES (@ComtradeIndex,@ChannelIndex,@DatIndex,@Time,@Value)";
+            string query4 = "INSERT INTO AnalogDat(ComtradeIndex,AnalogIndex,DatIndex,Time,Value,Result) VALUES (@ComtradeIndex,@AnalogIndex,@DatIndex,@Time,@Value,@Result)";
 
             int k = 0;
             string indexHex = hexChunk[3] + hexChunk[2] + hexChunk[1] + hexChunk[0];
@@ -868,14 +918,14 @@ namespace FileReadAndInsert
             int num1 = Convert.ToInt32(timeStampHex, 16);
             
 
-            for (int i = 8; i < hexChunk.Length - 3; i += 4)
+            for (int i = 8; i < hexChunk.Length - 5; i += 4)
             {
                 string x = hexChunk[i + 3] + hexChunk[i + 2] + hexChunk[i + 1] + hexChunk[i];
                 int decimalValue = Convert.ToInt32(x, 16);
 
                 string binaryValue = Convert.ToString(decimalValue, 2).PadLeft(32, '0');
 
-                double mantisa = ConvertBinaryFractionToDecimal(binaryValue.Substring(9)) + 1;
+                double mantisa = ConvertBinaryFractionToDecimal(binaryValue.Substring(9)) + 1.0;
                 int exponent = Convert.ToInt32(binaryValue.Substring(1, 8), 2) - 127;
 
                 double ascii = mantisa * Math.Pow(2, exponent);
@@ -885,6 +935,21 @@ namespace FileReadAndInsert
                 {
                     ascii = -ascii;
                 }
+                double result = 0.0;
+                if (Analog[k].DataPrimarySecondary.Equals("S"))
+                {
+
+                    result = ((ascii * Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset) * Analog[k].ChannelRatioPrimary;
+                }
+
+                else
+                {
+                    result = (ascii * Analog[k].ChannelMultiplier) + Analog[k].ChannelOffset;
+                }
+
+
+
+
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
                     con.Open();
@@ -895,10 +960,11 @@ namespace FileReadAndInsert
                         using (SqlCommand cmdAnalogDat = new SqlCommand(query4, con, transaction))
                         {
                             cmdAnalogDat.Parameters.AddWithValue("@ComtradeIndex", ComtradeIndex);
-                            cmdAnalogDat.Parameters.AddWithValue("@ChannelIndex", Analog[k].ChannelIndexNumber);
+                            cmdAnalogDat.Parameters.AddWithValue("@AnalogIndex", Analog[k].ChannelIndexNumber);
                             cmdAnalogDat.Parameters.AddWithValue("@DatIndex", num);
                             cmdAnalogDat.Parameters.AddWithValue("@Time", num1);
                             cmdAnalogDat.Parameters.AddWithValue("@Value", ascii);
+                            cmdAnalogDat.Parameters.AddWithValue("@Result", result);
 
                             cmdAnalogDat.ExecuteNonQuery();
                         }
@@ -916,7 +982,7 @@ namespace FileReadAndInsert
 
         static double ConvertBinaryFractionToDecimal(string binaryFraction)
         {
-            double decimalValue = 0.0;
+            double decimalValue = 0;
 
             for (int i = 0; i < binaryFraction.Length; i++)
             {
