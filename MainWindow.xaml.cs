@@ -535,10 +535,10 @@ namespace FileReadAndInsert
             public int SampleRateCount;
             public float SampleRate;
             public int LastSampleRate;
-            public string FirstSampleDate;
-            public string FirstSampleTime;
-            public string TriggerDate;
-            public string TriggerTime;
+            public DateTime FirstTimeStamp;
+            
+            public DateTime TriggerTimeStamp;
+            
             public string DataType;
             public float TimeMultiplier;
             public string TimeCode;
@@ -604,10 +604,13 @@ namespace FileReadAndInsert
             Comtrade.SampleRateCount = int.Parse(words[1]);
             Comtrade.SampleRate = float.Parse(words[2]);
             Comtrade.LastSampleRate = int.Parse(words[3]);
-            Comtrade.FirstSampleDate = words[4];
-            Comtrade.FirstSampleTime = words[5];
-            Comtrade.TriggerDate = words[6];
-            Comtrade.TriggerTime = words[7];
+           string time1 = words[4] + " " + words[5];
+            Comtrade.FirstTimeStamp = DateTime.Parse(time1);
+
+            string time2 = words[6] + " " + words[7];
+
+           Comtrade.TriggerTimeStamp = DateTime.Parse(time2);
+
             Comtrade.DataType = words[8];
             Comtrade.TimeMultiplier = float.Parse(words[9]);
             Comtrade.TimeCode = words[10];
@@ -622,7 +625,7 @@ namespace FileReadAndInsert
             var tokens = sentence.Split(',');
             if (tokens.Length !=3)
             {
-                MessageBox.Show("Error: Invalid file format.");
+                MessageBox.Show("Error: Invalid file format.SIgnal Count");
                 Application.Current.Shutdown();
 
             }
@@ -637,7 +640,7 @@ namespace FileReadAndInsert
             var tokens = line.Split(',');
             if (tokens.Length != 13)
             {
-                MessageBox.Show("Error: Invalid file format.");
+                MessageBox.Show("Error: Invalid file format. Anlog Signal");
                 Application.Current.Shutdown();
             }
             AnalogData analog = new AnalogData
@@ -1074,20 +1077,23 @@ namespace FileReadAndInsert
                         ExtractRevisedYear(line);
                         if (Comtrade.CfgVersion == 2013)
                         {
+                        line = fileLines[1];
+                        SignalCounting(line);
 
-                        if(fileLines.Length != (11 + Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount))
+
+                        if (fileLines.Length != (11 + Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount))
                         {
-                            MessageBox.Show("Error: Invalid file format.");
+                            string n=Convert.ToString(fileLines.Length);
+                            MessageBox.Show("Error: Invalid file format.Total lines");
                             Application.Current.Shutdown();
+                            
 
                         }
                         if(Comtrade1.TotalSignalCount != (Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount)) {
-                            MessageBox.Show("Error: Invalid file format.");
+                            MessageBox.Show("Error: Invalid file format.Total signals");
                             Application.Current.Shutdown();
                         }
-                        line = fileLines[1];
-                            SignalCounting(line);
-
+                        
                            for(int i=2;i<Comtrade1.AnalogSignalCount+2; i++)
                         {
                            
@@ -1308,8 +1314,7 @@ namespace FileReadAndInsert
                         // Insert into CFG
                         using (SqlCommand cmdcfg = new SqlCommand(query3, con, transaction))
                         {
-                            string time1 = Comtrade.FirstSampleDate + " " + Comtrade.FirstSampleTime;
-                            string time2 = Comtrade.TriggerDate + " " + Comtrade.TriggerTime;
+                            
 
                             cmdcfg.Parameters.AddWithValue("@ComtradeIndex", ComtradeIndex);
                             cmdcfg.Parameters.AddWithValue("@Station", Comtrade.Station);
@@ -1319,8 +1324,8 @@ namespace FileReadAndInsert
                             cmdcfg.Parameters.AddWithValue("@SampleRate", Comtrade.SampleRate);
                             cmdcfg.Parameters.AddWithValue("@SampleCountHz", Comtrade.SampleRateCount);
                             cmdcfg.Parameters.AddWithValue("@LastSampleCount", Comtrade.LastSampleRate);
-                            cmdcfg.Parameters.AddWithValue("@FirstSampleTime", DateTime.Parse(time1));
-                            cmdcfg.Parameters.AddWithValue("@TriggerTime", DateTime.Parse(time2));
+                            cmdcfg.Parameters.AddWithValue("@FirstSampleTime",Comtrade.FirstTimeStamp);
+                            cmdcfg.Parameters.AddWithValue("@TriggerTime", Comtrade.TriggerTimeStamp);
                             cmdcfg.Parameters.AddWithValue("@DataType", Comtrade.DataType);
                             cmdcfg.Parameters.AddWithValue("@TimeMultiplier", Comtrade.TimeMultiplier);
                             cmdcfg.Parameters.AddWithValue("@LocalTime", Comtrade.TimeCode);
