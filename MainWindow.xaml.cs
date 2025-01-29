@@ -491,6 +491,7 @@ using System.Globalization;
 using System.Transactions;
 using System.Collections.Generic;
 using System.Text;
+using Azure;
 
 namespace FileReadAndInsert
 {
@@ -590,16 +591,36 @@ namespace FileReadAndInsert
         public static void ComtradeParse(string sentence)
         {
             string[] tokens = sentence.Split(',');
+            
+            
             foreach (var token in tokens)
             {
                 if (Words.Count >= 14) return;
                 Words.Add(token);
+
             }
         }
 
         // Process parsed words into ComtradeData
         public static void ProcessWords(List<string> words)
         {
+            if(words.Count != 14)
+            {
+                MessageBox.Show("Error: Invalid file format. Comtrade Data");
+                Application.Current.Shutdown();
+            }
+            if (string.IsNullOrEmpty(words[0])) { MessageBox.Show("Error: Line frequency is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[1])) { MessageBox.Show("Error: SampleRateCount is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[2])) { MessageBox.Show("Error: Samplerate is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[3])) { MessageBox.Show("Error: Last Sample rate is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[4])) { MessageBox.Show("Error: First time stamp is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[6])) { MessageBox.Show("Error: Last time stamp is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[8])) { MessageBox.Show("Error:Data type is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[9])) { MessageBox.Show("Error: Time multiplier is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[10])) { MessageBox.Show("Error:Time code is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[11])) { MessageBox.Show("Error: Local code is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[12])) { MessageBox.Show("Error:TimeQualityIndicatorCode is empty"); Application.Current.Shutdown(); }
+            if(string.IsNullOrEmpty(words[13])) { MessageBox.Show("Error: LeapSecondIndicator is empty"); Application.Current.Shutdown(); }
             Comtrade.LineFrequency = float.Parse(words[0]);
             Comtrade.SampleRateCount = int.Parse(words[1]);
             Comtrade.SampleRate = float.Parse(words[2]);
@@ -625,13 +646,31 @@ namespace FileReadAndInsert
             var tokens = sentence.Split(',');
             if (tokens.Length !=3)
             {
-                MessageBox.Show("Error: Invalid file format.SIgnal Count");
+                MessageBox.Show("Error: Invalid file format.Signal Count");
                 Application.Current.Shutdown();
 
             }
             Comtrade1.TotalSignalCount = int.Parse(tokens[0]);
+            if(Comtrade1.TotalSignalCount>999999 ||Comtrade1.TotalSignalCount<1)
+            {
+                MessageBox.Show("Error:Channel number should be less than 999999.");
+                Application.Current.Shutdown();
+            }
+            if(tokens[1].Length<2 || tokens[2].Length < 2)
+            {
+                MessageBox.Show("Error:Analog channel and Digital number should be atleast 2 characters.");
+                Application.Current.Shutdown();
+            }
             Comtrade1.AnalogSignalCount = int.Parse(tokens[1].Substring(0, 2));
             Comtrade1.DigitalSignalCount = int.Parse(tokens[2].Substring(0, 2));
+
+
+            if (Comtrade1.TotalSignalCount != (Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount))
+            {
+                MessageBox.Show("Error: Invalid file format.Total signals");
+                Application.Current.Shutdown();
+            }
+
         }
 
         // Parse and store analog data
@@ -640,12 +679,22 @@ namespace FileReadAndInsert
             var tokens = line.Split(',');
             if (tokens.Length != 13)
             {
-                MessageBox.Show("Error: Invalid file format. Anlog Signal");
+                MessageBox.Show("Error: Invalid file format. Analog Signal");
                 Application.Current.Shutdown();
             }
+            if (string.IsNullOrEmpty(tokens[0])){ MessageBox.Show("Error: Channel Index Number is empty"); Application.Current.Shutdown(); }
+            if (string.IsNullOrEmpty(tokens[1])) { MessageBox.Show("Error: Channel Identifier is empty"); Application.Current.Shutdown(); }
+            if (string.IsNullOrEmpty(tokens[4])) { MessageBox.Show("Error: Channel Units  is empty"); Application.Current.Shutdown(); }
+            if (string.IsNullOrEmpty(tokens[5])) { MessageBox.Show("Error: Channel Multiplier is empty"); Application.Current.Shutdown(); }
+            if (string.IsNullOrEmpty(tokens[6])) { MessageBox.Show("Error: Channel offset is empty"); Application.Current.Shutdown(); }
+            if (float.Parse(tokens[8])> float.Parse(tokens[9])) { MessageBox.Show("Error: Channel offset is empty"); Application.Current.Shutdown(); }
+            
+            if (string.IsNullOrEmpty(tokens[12])) { MessageBox.Show("Error: Channel type is empty"); Application.Current.Shutdown(); }
+
             AnalogData analog = new AnalogData
+
             {
-                ChannelIndexNumber = int.Parse(tokens[0]),
+               ChannelIndexNumber = int.Parse(tokens[0]),
                 ChannelId = tokens[1],
                 PhaseId = tokens[2],
                 Ccbm = tokens[3],
@@ -668,9 +717,15 @@ namespace FileReadAndInsert
             var tokens = line.Split(',');
 
             // Check if there are enough tokens before processing
-            if (tokens.Length >= 5)
+            if (tokens.Length != 5)
             {
-                DigitalData digital = new DigitalData
+                MessageBox.Show("Error: Invalid file format. Digital Signal");
+                Application.Current.Shutdown();
+            }
+            if (string.IsNullOrEmpty(tokens[0])) { MessageBox.Show("Error: Channel Number is empty"); Application.Current.Shutdown(); }
+            if (string.IsNullOrEmpty(tokens[1])) { MessageBox.Show("Error: Channel Identifier is empty"); Application.Current.Shutdown(); }
+            if (int.Parse(tokens[4])!=0 || int.Parse(tokens[4])!=1) { MessageBox.Show("Error: Normal State is not int correct formate"); Application.Current.Shutdown(); }
+            DigitalData digital = new DigitalData
                 {
                     ChannelNumber = int.Parse(tokens[0]),
                     ChannelId = tokens[1],
@@ -679,7 +734,7 @@ namespace FileReadAndInsert
                     NormalState = int.Parse(tokens[4])
                 };
                 Digital.Add(digital);
-            }
+            
         }
 
         static void AsciiDat(string line, int Analogcount, int DigitalCount)
@@ -1088,10 +1143,6 @@ namespace FileReadAndInsert
                             Application.Current.Shutdown();
                             
 
-                        }
-                        if(Comtrade1.TotalSignalCount != (Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount)) {
-                            MessageBox.Show("Error: Invalid file format.Total signals");
-                            Application.Current.Shutdown();
                         }
                         
                            for(int i=2;i<Comtrade1.AnalogSignalCount+2; i++)
