@@ -620,15 +620,26 @@ namespace FileReadAndInsert
         public static void SignalCounting(string sentence)
         {
             var tokens = sentence.Split(',');
-            Comtrade1.TotalSignalCount = int.Parse(tokens[0].Substring(0, 2));
+            if (tokens.Length !=3)
+            {
+                MessageBox.Show("Error: Invalid file format.");
+                Application.Current.Shutdown();
+
+            }
+            Comtrade1.TotalSignalCount = int.Parse(tokens[0]);
             Comtrade1.AnalogSignalCount = int.Parse(tokens[1].Substring(0, 2));
             Comtrade1.DigitalSignalCount = int.Parse(tokens[2].Substring(0, 2));
         }
 
         // Parse and store analog data
-        public static void ParseAndStoreAnalogData(string line, int index)
+        public static void ParseAndStoreAnalogData(string line)
         {
             var tokens = line.Split(',');
+            if (tokens.Length != 13)
+            {
+                MessageBox.Show("Error: Invalid file format.");
+                Application.Current.Shutdown();
+            }
             AnalogData analog = new AnalogData
             {
                 ChannelIndexNumber = int.Parse(tokens[0]),
@@ -646,6 +657,26 @@ namespace FileReadAndInsert
                 DataPrimarySecondary = tokens[12]
             };
             Analog.Add(analog);
+        }
+
+
+        public static void ParseAndStoreDigitalData(string line)
+        {
+            var tokens = line.Split(',');
+
+            // Check if there are enough tokens before processing
+            if (tokens.Length >= 5)
+            {
+                DigitalData digital = new DigitalData
+                {
+                    ChannelNumber = int.Parse(tokens[0]),
+                    ChannelId = tokens[1],
+                    PhaseId = tokens[2],
+                    Ccbm = tokens[3],
+                    NormalState = int.Parse(tokens[4])
+                };
+                Digital.Add(digital);
+            }
         }
 
         static void AsciiDat(string line, int Analogcount, int DigitalCount)
@@ -999,24 +1030,7 @@ namespace FileReadAndInsert
 
 
 
-        public static void ParseAndStoreDigitalData(string line, int index)
-        {
-            var tokens = line.Split(',');
-
-            // Check if there are enough tokens before processing
-            if (tokens.Length >= 5)
-            {
-                DigitalData digital = new DigitalData
-                {
-                    ChannelNumber = int.Parse(tokens[0]),
-                    ChannelId = tokens[1],
-                    PhaseId = tokens[2],
-                    Ccbm = tokens[3],
-                    NormalState = int.Parse(tokens[4])
-                };
-                Digital.Add(digital);
-            }
-        }
+       
 
         // Handle "Choose File" button click
         private void btnChooseFile_Click(object sender, RoutedEventArgs e)
@@ -1047,43 +1061,53 @@ namespace FileReadAndInsert
                 return;
             }
 
-            using (StreamReader file = new StreamReader(filePath))
-            {
-                string line;
+            var fileLines = File.ReadAllLines(filePath);
+
+            
                 int analogIndex = 0, digitalIndex = 0;
                 if (string.Equals(fileExtension, ".cfg", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Read and process lines
-                    line = file.ReadLine();
-                    if (line != null)
+                // Read and process lines
+                string line=fileLines[0];
+                if (line != null)
                     {
                         ExtractRevisedYear(line);
                         if (Comtrade.CfgVersion == 2013)
                         {
-                            line = file.ReadLine();
+
+                        if(fileLines.Length != (11 + Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount))
+                        {
+                            MessageBox.Show("Error: Invalid file format.");
+                            Application.Current.Shutdown();
+
+                        }
+                        if(Comtrade1.TotalSignalCount != (Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount)) {
+                            MessageBox.Show("Error: Invalid file format.");
+                            Application.Current.Shutdown();
+                        }
+                        line = fileLines[1];
                             SignalCounting(line);
 
-                            while ((line = file.ReadLine()) != null && analogIndex < Comtrade1.AnalogSignalCount)
-                            {
-                                ParseAndStoreAnalogData(line, analogIndex);
-                                analogIndex++;
-                            }
-                            ParseAndStoreDigitalData(line, digitalIndex);
-                            while ((line = file.ReadLine()) != null && digitalIndex < Comtrade1.DigitalSignalCount - 1)
-                            {
-                                ParseAndStoreDigitalData(line, digitalIndex);
-                                digitalIndex++;
-                            }
-                            ComtradeParse(line);
-
-                            while ((line = file.ReadLine()) != null)
-                            {
-                                ComtradeParse(line);
-                            }
-                            ProcessWords(Words);
+                           for(int i=2;i<Comtrade1.AnalogSignalCount+2; i++)
+                        {
+                           
+                            ParseAndStoreAnalogData(fileLines[i]);
+                            analogIndex++;
                         }
+                       for(int i= Comtrade1.AnalogSignalCount + 2; i < Comtrade1.DigitalSignalCount + Comtrade1.AnalogSignalCount + 2; i++)
+                        {
+                            ParseAndStoreDigitalData(fileLines[i]);
+                            
+                        }
+                           for(int i=Comtrade1.AnalogSignalCount + Comtrade1.DigitalSignalCount+2;i< fileLines.Length; i++)
+                        {
+                            ComtradeParse(fileLines[i]);
+                           
+                        }
+                           ProcessWords(Words);
                     }
-                }
+                    }
+                
                 if (string.Equals(fileExtension, ".dat", StringComparison.OrdinalIgnoreCase))
                 {
                     if ((string.Equals(Comtrade.DataType, "ASCII", StringComparison.OrdinalIgnoreCase)))
